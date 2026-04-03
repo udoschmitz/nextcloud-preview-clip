@@ -44,3 +44,14 @@ Der robuste Weg ist:
 
 Das folgt dem bewährten Ansatz aus `clip_to_psd` (als Inspiration für das Formatverständnis).
 
+## Lizenz
+
+Dieses Projekt steht unter `AGPL-3.0-or-later` (siehe `LICENSE`).
+
+## Referenz / Attribution
+
+Als Format-Referenz wurde `dobrokot/clip_to_psd` genutzt:
+- https://github.com/dobrokot/clip_to_psd/
+
+Details siehe `THIRD_PARTY_NOTICES.md`.
+
