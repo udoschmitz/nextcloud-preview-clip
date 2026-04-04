@@ -1,0 +1,9 @@
+ARG NEXTCLOUD_BASE_TAG=33-apache
+FROM nextcloud:${NEXTCLOUD_BASE_TAG}
+
+# Clip Studio preview provider (no extra packages needed — uses PDO SQLite, built-in)
+COPY ClipStudio.php /usr/src/nextcloud/lib/private/Preview/ClipStudio.php
+
+# Register provider in PreviewManager (source tree; runtime copy handled by entrypoint)
+COPY patch_preview_manager_clip.php /usr/local/bin/patch_preview_manager_clip.php
+RUN php /usr/local/bin/patch_preview_manager_clip.php

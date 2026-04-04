@@ -1,57 +1,74 @@
-# nextcloud-preview-clip
+# Nextcloud preview: Clip Studio Paint (.clip)
 
-Eigenständiges Projekt für Nextcloud-Previews von Clip Studio Paint `.clip` Dateien.
+**Repository:** [github.com/udoschmitz/nextcloud-preview-clip](https://github.com/udoschmitz/nextcloud-preview-clip)
 
-Kompatibel mit Nextcloud 33 (Docker-Setup auf Basis `nextcloud:33-apache`).
+Generates thumbnails in Nextcloud for **Clip Studio Paint** `.clip` files by extracting the embedded canvas preview.
 
-## Inhalt
+- **License:** [AGPL-3.0](LICENSE) (same integration path as Nextcloud core preview providers)
+- **References:** [dobrokot/clip_to_psd](https://github.com/dobrokot/clip_to_psd/) (format understanding — see `THIRD_PARTY_NOTICES.md`)
 
-- `ClipStudio.php`: Preview-Provider (CSFCHUNK -> SQLi -> `CanvasPreview.ImageData`)
-- `patch_preview_manager.php`: registriert `OC\Preview\ClipStudio` idempotent
-- `patch_files_dist_haspreview.py`: UI-Patch für `has-preview`/`fileid`-Fallback
-- `entrypoint-apply-preview-customizations.sh`: Runtime-Sync für gemountetes `/var/www/html`
-- `Dockerfile`: Beispiel-Build für Nextcloud 33
+## How it works
 
-## Idee
+1. Parse the **CSFCHUNK** container and locate the `CHNK "SQLi"` block (an embedded SQLite database).
+2. Query `CanvasPreview.ImageData` from that SQLite blob — this is a ready-made PNG.
+3. Fallback: heuristic scan for an embedded PNG signature directly in the file body.
 
-Bei vielen Docker-Setups ist `/var/www/html` ein Volume. Dann reichen Build-Patches allein nicht.
-Deshalb werden die Provider-/UI-Patches beim Container-Start erneut (idempotent) angewendet.
+No external tools are required; PHP's built-in **PDO SQLite** extension handles the query.
 
-## Voraussetzungen
+## Requirements
 
-- Docker Compose Setup für Nextcloud
-- Preview-App in Nextcloud aktiviert (`core` Preview-System)
-- MIME-Zuordnung für `.clip` auf `application/x-clip-studio`
+1. Nextcloud Docker build (or equivalent)
+2. PHP **PDO SQLite** extension — standard in the Nextcloud base image
 
-## Deployment (Kurzfassung)
+## What this repo contains
 
-1. Dateien aus diesem Repo in den Build-Kontext kopieren.
-2. `Dockerfile` so verwenden, dass `ClipStudio.php` + Patches ins Image kommen.
-3. Image neu bauen und Container neu starten (`docker compose build && docker compose up -d`).
-4. Optional/empfohlen: `previewgenerator` aktiv lassen und per Cron vorwärmen.
-5. Smoke-Test:
-   - `php occ preview:generate -n <fileid>`
-   - danach im Files-UI hart neu laden.
+| File | Purpose |
+|------|---------|
+| `ClipStudio.php` | Core preview provider (`OC\Preview\ClipStudio`) |
+| `patch_preview_manager_clip.php` | Registers the provider in `lib/private/PreviewManager.php` (idempotent) |
+| `mimetypemapping.json` | MIME mapping: `.clip` → `application/x-clip-studio` |
+| `Dockerfile.example` | Minimal image extension |
+| `docs/PREVIEW_CLIP.md` | Full technical reference |
+| `AGENTS.md` | Orientation for AI / maintainers |
 
-## Warum SQLi-Extraktion?
+## Important caveat
 
-`.clip` enthält den verwertbaren Vorschaudatenstrom nicht zuverlässig als sofort dekodierbares Standard-PNG im Dateikörper.
-Der robuste Weg ist:
+Nextcloud does not expose a stable public API to register **core** preview providers without editing `PreviewManager.php`. This project patches that file **at image build time** against `/usr/src/nextcloud`, like other custom Docker layers. After a **major** Nextcloud upgrade, re-check that the **Krita** anchor line in `PreviewManager.php` still matches.
 
-- `CSFCHUNK` parsen
-- `CHNK "SQLi"` extrahieren
-- aus `CanvasPreview.ImageData` das PNG lesen
+## Installation (Docker)
 
-Das folgt dem bewährten Ansatz aus `clip_to_psd` (als Inspiration für das Formatverständnis).
+1. Copy `ClipStudio.php` and `patch_preview_manager_clip.php` into your build context.
+2. Use `Dockerfile.example` as a starting point, or merge equivalent lines into your Dockerfile.
+3. Merge `mimetypemapping.json` into your live `config/mimetypemapping.json` and run:
 
-## Lizenz
+```bash
+docker exec -u 33 nextcloud-app-1 php occ maintenance:mimetype:update-js
+docker exec -u 33 nextcloud-app-1 php occ maintenance:mimetype:update-db --repair-filecache
+```
 
-Dieses Projekt steht unter `AGPL-3.0-or-later` (siehe `LICENSE`).
+4. Add the provider to `enabledPreviewProviders` in `config/config.php` (see below).
+5. Rebuild and recreate the container.
 
-## Referenz / Attribution
+## `config.php`: preview provider whitelist
 
-Als Format-Referenz wurde `dobrokot/clip_to_psd` genutzt:
-- https://github.com/dobrokot/clip_to_psd/
+If you use **`enabledPreviewProviders`**, add:
 
-Details siehe `THIRD_PARTY_NOTICES.md`.
+```php
+'OC\\Preview\\ClipStudio',
+```
 
+## Non-Docker installs
+
+1. Place `ClipStudio.php` under `lib/private/Preview/`.
+2. Run `patch_preview_manager_clip.php` once against your tree, or add `registerCoreProvider(Preview\ClipStudio::class, …)` manually next to the Krita line.
+
+## Troubleshooting
+
+- **No preview:** ensure the `.clip` file was saved normally (not as a layer-only export) so the embedded canvas preview exists.
+- **Wrong MIME:** check that `mimetypemapping.json` is merged and `occ maintenance:mimetype:*` was run.
+- **SQLite not available:** verify `php -m | grep pdo_sqlite` inside the container.
+- **Upgrade broke patch:** update the Krita anchor in `patch_preview_manager_clip.php` or open an issue with the NC version.
+
+## Contributing
+
+Issues and PRs welcome. Please keep licensing compatible with **AGPL-3.0**.
