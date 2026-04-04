@@ -3,7 +3,15 @@
 declare(strict_types=1);
 
 /**
- * Idempotently inject ClipStudio preview provider into PreviewManager.
+ * Idempotently register the ClipStudio preview provider in Nextcloud core PreviewManager.
+ *
+ * Patches both /usr/src/nextcloud (image build) and /var/www/html (runtime volume),
+ * skipping whichever path does not exist.
+ *
+ * Idempotency check matches the full insertion string — a changed regex will
+ * trigger a re-patch rather than being silently kept.
+ *
+ * @license AGPL-3.0-or-later
  */
 
 $targets = [
@@ -28,8 +36,8 @@ foreach ($targets as $target) {
 		exit(1);
 	}
 
-	$hasProvider = strpos($source, "Preview\\ClipStudio::class") !== false;
-	if ($hasProvider) {
+	// Check for the exact insertion string — prevents stale regex from being kept silently.
+	if (strpos($source, $insertion) !== false) {
 		continue;
 	}
 

@@ -1,9 +1,11 @@
 ARG NEXTCLOUD_BASE_TAG=33-apache
 FROM nextcloud:${NEXTCLOUD_BASE_TAG}
 
-# Clip Studio preview provider (no extra packages needed — uses PDO SQLite, built-in)
+# Copy provider to both source tree and runtime path.
+# /usr/src/nextcloud is used by the official entrypoint on first install.
+# /var/www/html is the live path when it is a bind-mounted volume.
 COPY ClipStudio.php /usr/src/nextcloud/lib/private/Preview/ClipStudio.php
+COPY ClipStudio.php /var/www/html/lib/private/Preview/ClipStudio.php
 
-# Register provider in PreviewManager (source tree; runtime copy handled by entrypoint)
-COPY patch_preview_manager_clip.php /usr/local/bin/patch_preview_manager_clip.php
-RUN php /usr/local/bin/patch_preview_manager_clip.php
+COPY patch_preview_manager_clip.php /tmp/patch_preview_manager_clip.php
+RUN php /tmp/patch_preview_manager_clip.php && rm -f /tmp/patch_preview_manager_clip.php
