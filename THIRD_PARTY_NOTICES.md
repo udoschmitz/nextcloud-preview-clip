@@ -1,13 +1,18 @@
 # Third-Party Notices
 
-## Format reference / inspiration
+## Format reference: dobrokot/clip_to_psd
 
-- Project: `dobrokot/clip_to_psd`
-- URL: https://github.com/dobrokot/clip_to_psd/
-- Upstream license: MIT
+| Field | Value |
+|-------|-------|
+| Project | `dobrokot/clip_to_psd` |
+| URL | https://github.com/dobrokot/clip_to_psd/ |
+| License | MIT |
+| Author | dobrokot |
 
-This project uses `clip_to_psd` as a reference for understanding the `.clip`
-container format (for example `CSFCHUNK`/`CHNK` and `SQLi` + `CanvasPreview.ImageData`).
+`clip_to_psd` was used as a reference for understanding the Clip Studio Paint `.clip`
+container format — specifically the **CSFCHUNK** / **CHNK** block structure, the
+**`SQLi`** chunk carrying an embedded SQLite database, and the
+**`CanvasPreview.ImageData`** table that holds the canvas preview PNG.
 
-No direct source code copy from `clip_to_psd` is included in this repository.
-
+No source code from `clip_to_psd` is included in this repository.
+The implementation in `ClipStudio.php` was written independently.
